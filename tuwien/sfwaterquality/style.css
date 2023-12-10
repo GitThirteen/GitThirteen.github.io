@@ -82,3 +82,8 @@ h1, h2, h3, h4 {
     background-color: var(--color-box);
     box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
 }
+
+.leaflet-map {
+    height: 100vh;
+    width: 100vw;
+}

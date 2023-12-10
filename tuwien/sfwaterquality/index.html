@@ -4,23 +4,41 @@
     <meta charset="UTF-8">
     <meta name="keywords" content="Water Quality, San Francisco">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+<!--    <link rel="stylesheet" href="style.css">-->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        #leaflet-map {
+            height: 100vh;
+            width: 100vw;
+        }
+    </style>
 </head>
 
 <body>
-    <div class="header">
-        <div class="unselectable title">
-            <h2>Water Quality</h2>
-            <h4>in the</h4>
-            <h1>San Francisco Bay Area</h1>
-        </div>
-    </div>
-    <div class="main">
-        <div class="map" id="map">
-            <!-- TODO -->
-        </div>
-    </div>
-    <script src="map.js"></script>
+<!--    <div class="header">-->
+<!--        <div class="unselectable title">-->
+<!--            <h2>Water Quality</h2>-->
+<!--            <h4>in the</h4>-->
+<!--            <h1>San Francisco Bay Area</h1>-->
+<!--        </div>-->
+<!--    </div>-->
+    <div id="leaflet-map"></div>
+<!--    <div class="main">-->
+<!--        <div class="map" id="map">-->
+<!--            &lt;!&ndash; TODO &ndash;&gt;-->
+<!--        </div>-->
+<!--    </div>-->
+
+    <script src="leafletmap.js"></script>
+<!--    <script src="map.js"></script>-->
 </body>
 </html>
