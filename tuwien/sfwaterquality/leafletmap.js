@@ -1,24 +1,49 @@
+// UTILITY //
+
+const swap = ([a, b]) => [b, a]
+
+const genMap = () => {
+    const map = L.map('leaflet-map');
+    map.setView([37.648, -122.169], 11);
+    map.setMinZoom(10);
+    map.setMaxZoom(13);
+
+    const boundsNE = L.latLng(38.238, -121.600);
+    const boundsSW = L.latLng(37.385, -122.615);
+    const bounds = L.latLngBounds(boundsNE, boundsSW);
+    map.setMaxBounds(bounds);
+
+    return map;
+}
+
+// MAIN //
+
 const LOC_JSON_PATH = "./Stations.geojson";
-const map = L.map('leaflet-map').setView([37.7, -122.3], 11);
+const map = genMap();
 
 (async () => {
+    const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    });
+    layer.addTo(map);
+
     const response = await fetch(LOC_JSON_PATH);
     const stations = await response.json();
     
     for (const location of stations.features) {
         const { properties, geometry } = location;
 
-        const marker = L.marker(geometry.coordinates);
+        const marker = L.marker(swap(geometry.coordinates), {
+            title: properties.name,
+            opacity: 0.33,
+            riseOnHover: true
+        });
         marker.addTo(map);
     }
 })();
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors'
-}).addTo(map);
-
 // D3 map
-const svg = d3.select(map.getPanes().overlayPane).append("svg");
+/*const svg = d3.select(map.getPanes().overlayPane).append("svg");
 const g = svg.append("g").attr("class", "leaflet-zoom-hide");
 
 map.on("viewreset move", update);
@@ -49,4 +74,4 @@ function update() {
         .style("top", topLeft.y + "px");
 
     g.attr("transform", "translate(" + -topLeft.x + "," + -topLeft.y + ")");
-}
+}*/
