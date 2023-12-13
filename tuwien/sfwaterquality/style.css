@@ -2,7 +2,9 @@
 
 :root {
     --color-bg: #333533;
+    --color-header: #87ceeb;
     --color-box: #242423;
+    --color-sun: #f5b027;
     --color-text: #e8eddf;
 
     --font-title: 'Dancing Script', cursive;
@@ -12,6 +14,9 @@
 body {
     display: flex;
     flex-direction: column;
+
+    padding: 0;
+    margin: 0;
 
     background-color: var(--color-bg);
 }
@@ -52,38 +57,69 @@ h1, h2, h3, h4 {
 .header {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
 
     width: 100%;
     height: 220px;
+
+    background-color: var(--color-header);
+    box-shadow: inset 0 -8px 6px -6px rgba(0, 0, 0, 0.5);
 }
+
+.sun {
+    width: 450px;
+    height: 205px;
+    margin-right: -450px;
+    border-radius: 205px 205px 0 0;
+    
+    background-color: var(--color-sun);
+    box-shadow: inset 0 -8px 6px -6px rgba(0, 0, 0, 0.5);
+}
+
 
 .title {
     display: flex;
+    position: relative;
     justify-content: center;
     align-items: center;
     flex-direction: column;
+
+    padding-bottom: 0.5em;
+    margin-left: 0.6em;
 
     font-family: var(--font-title);
     color: var(--color-text);
 }
 
 .main {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 1em;
+    padding: 0 20px;
+
+    position: relative;
+    z-index: 2;
+}
+
+.map-area {
     display: flex;
     justify-content: center;
     width: 100%;
-}
-
-.map {
-    width: calc(1600px - 10%);
-    aspect-ratio: auto 16 / 9;
-    border-radius: 5px;
+    margin: 10px 0;
+    height: calc(100vh - 220px - 20px);
 
     background-color: var(--color-box);
     box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
 }
 
-.leaflet-map {
-    height: 100vh;
-    width: 100vw;
+.map {
+    padding: 10px;
+    width: 100%;
+    aspect-ratio: auto 16 / 9;
+    border-radius: 5px;
+}
+
+#leaflet-map {
+    width: 100%;
+    aspect-ratio: auto 16 / 9;
 }
