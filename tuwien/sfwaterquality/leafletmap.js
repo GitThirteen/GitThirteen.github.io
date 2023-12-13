@@ -34,10 +34,10 @@ const map = genMap();
         const { properties, geometry } = location;
 
         const marker = L.marker(swap(geometry.coordinates), {
-            title: properties.name,
             opacity: 0.33,
             riseOnHover: true
         });
+        marker.bindTooltip(properties.name).openTooltip();
         marker.addTo(map);
     }
 })();
