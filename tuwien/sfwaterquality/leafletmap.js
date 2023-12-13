@@ -1,5 +1,17 @@
-// Leaflet map
-const map = L.map('leaflet-map').setView([37.7749, -122.4194], 12); // San Francisco coordinates
+const LOC_JSON_PATH = "./Stations.geojson";
+const map = L.map('leaflet-map').setView([37.7, -122.3], 11);
+
+(async () => {
+    const response = await fetch(LOC_JSON_PATH);
+    const stations = await response.json();
+    
+    for (const location of stations.features) {
+        const { properties, geometry } = location;
+
+        const marker = L.marker(geometry.coordinates);
+        marker.addTo(map);
+    }
+})();
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
