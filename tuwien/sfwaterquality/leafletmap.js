@@ -65,6 +65,178 @@ const swapData = (year) => {
             ? 'var(--color-sun)' 
             : 'transparent';
     }
+
+    if (dfStatus[0]) editInformation('df-1-');
+    if (dfStatus[1]) editInformation('df-2-');
+}
+
+const getSamplePoint = (location) => {
+    for (const [key, value] of Object.entries(stationLookup)) {
+        const [ lat, long ] = value;
+
+        if (location[0].toFixed(3) === lat.toFixed(3) && location[1].toFixed(3) === long.toFixed(3)) {
+            return key;
+        }
+    }
+
+    return false;
+}
+
+const cToF = (temp) => {
+    return temp * 1.8 + 32;
+}
+
+const distance = (a, b) => {
+    const x = a[0] - b[0];
+    const y = a[1] - b[1];
+    return Math.sqrt(x * x + y * y);
+}
+
+/**
+ * Calculates the average data based on param. If a location matching a data point is
+ * found, that data point is assumed to be a marker and is solely considered. If not,
+ * the weighted average of the five closest neighbors (5NN) is taken and averaged.
+ * @param {*} location The location of the point of interest
+ * @returns The averaged value as typeof Number
+ */
+const calcAvgs = (location) => {
+    const sp = getSamplePoint(location);
+    if (sp) {
+        const spEntries = filteredData.filter(entry => entry['Station'] === sp);
+
+        const payload = { };
+
+        const tempSum = spEntries.reduce((sum, entry) => sum + Number(entry['Temperature (Degrees Celsius)']), 0);
+        payload.temp = tempSum / spEntries.length;
+        const spmSum = spEntries.reduce((sum, entry) => sum + Number(entry['Calculated SPM (mg/L)']), 0);
+        payload.spm = spmSum / spEntries.length;
+        const chloroSum = spEntries.reduce((sum, entry) => sum + Number(entry['Calculated Chlorophyll-a (micrograms/L)']), 0);
+        payload.algae = chloroSum / spEntries.length;
+        const salinitySum = spEntries.reduce((sum, entry) => sum + Number(entry['Salinity']), 0);
+        payload.salinity = salinitySum / spEntries.length;
+
+        return payload;
+    }
+
+    // Calculate distance between selected location and all stations
+    const distances = [ ];
+    for (const coords of Object.values(stationLookup)) {
+        distances.push(distance(location, coords));
+    }
+
+    // ... and get the distance and index of the 5 nearest
+    const n = 5;
+    const minDists = [...distances.keys()]
+        .sort((a, b) => distances[a] - distances[b])
+        .slice(0, n);
+
+    const data = [ ];
+    for (const distIndex of minDists) {
+        data.push({
+            'distance': distances[distIndex],
+            'stationPos': Object.values(stationLookup)[distIndex]
+        });
+    }
+
+    // Calculate the weights of the 5 nearest
+    const lowest = data[0].distance;
+    const weights = [ ];
+    for (const entry of data) {
+        weights.push(lowest / entry.distance);
+    }
+
+    // ... and weigh the data accordingly
+    // TODO: Unify this with the single-node approach above
+    const payload = { 'temp': 0, 'spm': 0, 'algae': 0, 'salinity': 0 };
+
+    for (let i = 0; i < n; i++) {
+        const entry = data[i];
+        const sp = getSamplePoint(entry.stationPos);
+        const spEntries = filteredData.filter(entry => entry['Station'] === sp);
+
+        const tempSum = spEntries.reduce((sum, entry) => sum + Number(entry['Temperature (Degrees Celsius)']), 0);
+        payload.temp += (tempSum / spEntries.length) * weights[i];
+        const spmSum = spEntries.reduce((sum, entry) => sum + Number(entry['Calculated SPM (mg/L)']), 0);
+        payload.spm += (spmSum / spEntries.length) * weights[i];
+        const chloroSum = spEntries.reduce((sum, entry) => sum + Number(entry['Calculated Chlorophyll-a (micrograms/L)']), 0);
+        payload.algae += (chloroSum / spEntries.length) * weights[i];
+        const salinitySum = spEntries.reduce((sum, entry) => sum + Number(entry['Salinity']), 0);
+        payload.salinity += (salinitySum / spEntries.length) * weights[i];
+    }
+
+    const weightsSum = weights.reduce((sum, a) => sum + a, 0);
+    payload.temp /= weightsSum;
+    payload.spm /= weightsSum;
+    payload.algae /= weightsSum;
+    payload.salinity /= weightsSum;
+
+    return payload;
+}
+
+/**
+ * Very vaguely based on https://www.researchgate.net/publication/26547985_Short-term_Influences_on_Suspended_Particulate_Matter_Distribution_in_the_Northern_Gulf_of_Mexico_Satellite_and_Model_Observations
+ * Requires more research for more correct labeling
+ * @param {*} spm The SPM value as number
+ * @returns A string containing the SPM label
+ */
+const getSPMLabel = (spm) => {
+    if (spm < 0.5) return 'None';
+    if (spm < 3.0) return 'Low';
+    if (spm < 15) return 'Medium';
+    return 'High';
+}
+
+/**
+ * Based on page 11 of https://www.deq.nc.gov/documents/pdf/coastal-resources-commission-meeting-agendas-minutes/presentations/chlorophyll-considerations-ppt-063017/download
+ * @param {*} spm The chloro-a value as number
+ * @returns A string containing the chloro label
+ */
+const getChloroLabel = (chloro) => {
+    if (chloro < 10) return 'Low';
+    if (chloro < 20) return 'Noticeable';
+    if (chloro < 30) return 'High';
+    return 'Concerning';
+}
+
+/**
+ * Returns a salinity label based on https://www.watereducation.org/aquapedia-background/salinity
+ * @param {*} salinity The salinity value as number
+ * @returns A string containing the salinity label
+ */
+const getSalinityLabel = (salinity) => {
+    if (salinity < 1.0) return 'Fresh';
+    if (salinity < 3.0) return 'Slight';
+    if (salinity < 10.0) return 'Moderate';
+    return 'High';
+}
+
+const editInformation = (panelId) => {
+    let coords = document.getElementById(panelId + 'coords');
+    coords = coords.innerText.substring(1, coords.innerText.length - 1);
+    coords = coords.split(',');
+    coords = coords.map(Number);
+    const avg = calcAvgs(coords);
+    
+    // Probably improvable but good enough for now, not trying to win a beautiful code contest
+    const temp = document.getElementById(panelId + 'temp');
+    let isNaN = Number.isNaN(avg.temp);
+    temp.children[1].innerHTML = isNaN ? 'N/A' : `${avg.temp.toFixed(1)}°C`;
+    temp.children[2].innerHTML = isNaN ? 'N/A' : `${cToF(avg.temp).toFixed(1)}°F`;
+
+    const muddiness = document.getElementById(panelId + 'muddiness');
+    isNaN = Number.isNaN(avg.spm);
+    muddiness.children[1].innerHTML = isNaN ? 'N/A' : getSPMLabel(avg.spm);
+    muddiness.children[2].innerHTML = isNaN ? 'N/A' : `${avg.spm.toFixed(1)}mg/L`;
+
+    const algae = document.getElementById(panelId + 'algae');
+    isNaN = Number.isNaN(avg.algae);
+    algae.children[1].innerHTML = isNaN ? 'N/A' : getChloroLabel(avg.algae);
+    algae.children[2].innerHTML = isNaN ? 'N/A' : `${avg.algae.toFixed(1)}µg/L`;
+
+    const salinity = document.getElementById(panelId + 'salinity');
+    isNaN = Number.isNaN(avg.salinity);
+    salinity.children[1].innerHTML = isNaN ? 'N/A' : getSalinityLabel(avg.salinity);
+    salinity.children[2].innerHTML = isNaN ? 'N/A' : `${avg.salinity.toFixed(1)}g/Kg`;
 }
 
 const editDataDisplay = (e, isMarker) => {
@@ -76,32 +248,19 @@ const editDataDisplay = (e, isMarker) => {
     dataField = document.getElementById(id + 'data');
     dataField.classList.remove('hidden');
 
-    const title = document.getElementById(id + 'title');
-    const coords = document.getElementById(id + 'coords');
-    const temp = document.getElementById(id + 'temp');
-    const muddiness = document.getElementById(id + 'muddiness');
-    const algae = document.getElementById(id + 'algae');
-    const salinity = document.getElementById(id + 'salinity');
+    if (e !== null && isMarker !== null) {
+        const title = document.getElementById(id + 'title');
+        const coords = document.getElementById(id + 'coords');
 
-    title.innerHTML = isMarker ? e.target._tooltip._content : 'Custom Selection';
+        title.innerHTML = isMarker ? e.target._tooltip._content : 'Custom Selection';
+        const { lat, lng } = e.latlng;
+        coords.innerHTML = `[${lat.toFixed(3)}, ${lng.toFixed(3)}]`;
+    }
     
-    const { lat, lng } = e.latlng;
-    coords.innerHTML = `[${lat.toFixed(3)}, ${lng.toFixed(3)}]`;
+    editInformation(id);
 
-    /*for (let i = 0; i < dataField.children.length; i++) {
-        const child = dataField.children[i];
-        console.log(child.innerHTML);
-        if (child.id === 'title') {
-            child.innerHTML = isMarker ? e.target._tooltip._content : 'Custom Selection';
-        }
-        else if (child.id === 'coords') {
-            const { lat, lng } = e.latlng;
-            child.innerHTML = `[${lat.toFixed(3)}, ${lng.toFixed(3)}]`;
-        }
-    }*/
-
-    if (id === 'df-1-') dfStatus[0] = true;
-    else dfStatus[1] = true;
+    const index = (id === 'df-1-') ? 0 : 1;
+    dfStatus[index] = [e.latlng[0], e.latlng[1]];
 }
 
 const resetDataDisplay = (id) => {
@@ -111,8 +270,8 @@ const resetDataDisplay = (id) => {
     dataField = document.getElementById(id + 'default');
     dataField.classList.remove('hidden');
 
-    if (id === 'df-1-') dfStatus[0] = false;
-    else dfStatus[1] = false;
+    const index = (id === 'df-1-') ? 0 : 1;
+    dfStatus[index] = null;
 }
 
 // MAIN //
@@ -123,7 +282,8 @@ const CSV_PATH = './full_dataset.csv';
 const map = genMap();
 let data;
 let filteredData;
-let dfStatus = [false, false];
+let stationLookup = { };
+let dfStatus = [null, null];
 let selectedYear = 2023;
 
 (async () => {
@@ -135,7 +295,6 @@ let selectedYear = 2023;
 
     // Add on-click event listener for map
     map.on('click', (e) => {
-        const { lat, lng } = e.latlng;
         editDataDisplay(e, false);
     });
 
@@ -163,10 +322,11 @@ let selectedYear = 2023;
         
         // Add on-click event listener for each marker
         marker.on('click', (e) => {
-            const { lat, lng } = e.latlng;
-            console.log(e);
             editDataDisplay(e, true);
         });
+
+        // Fill up station lookup table for later use
+        stationLookup[properties.id] = swap(geometry.coordinates);
     }
 
     // Fetch data from csv and optimize it
