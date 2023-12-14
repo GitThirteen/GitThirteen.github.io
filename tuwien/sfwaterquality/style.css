@@ -270,11 +270,26 @@ h1, h2, h3, h4 {
 }
 
 .timeplotter {
-
+    
 }
 
-.depthplotter {
+.aligner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 
+.thats-it {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(-5deg);
+    -webkit-transform: rotate(-5deg);
+}
+
+.thats-it h3 {
+    color: var(--color-sun);
 }
 
 .thin {
