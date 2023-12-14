@@ -67,6 +67,54 @@ const swapData = (year) => {
     }
 }
 
+const editDataDisplay = (e, isMarker) => {
+    const id = !dfStatus[0] ? 'df-1-' : 'df-2-';
+
+    let dataField = document.getElementById(id + 'default');
+    dataField.classList.add('hidden');
+
+    dataField = document.getElementById(id + 'data');
+    dataField.classList.remove('hidden');
+
+    const title = document.getElementById(id + 'title');
+    const coords = document.getElementById(id + 'coords');
+    const temp = document.getElementById(id + 'temp');
+    const muddiness = document.getElementById(id + 'muddiness');
+    const algae = document.getElementById(id + 'algae');
+    const salinity = document.getElementById(id + 'salinity');
+
+    title.innerHTML = isMarker ? e.target._tooltip._content : 'Custom Selection';
+    
+    const { lat, lng } = e.latlng;
+    coords.innerHTML = `[${lat.toFixed(3)}, ${lng.toFixed(3)}]`;
+
+    /*for (let i = 0; i < dataField.children.length; i++) {
+        const child = dataField.children[i];
+        console.log(child.innerHTML);
+        if (child.id === 'title') {
+            child.innerHTML = isMarker ? e.target._tooltip._content : 'Custom Selection';
+        }
+        else if (child.id === 'coords') {
+            const { lat, lng } = e.latlng;
+            child.innerHTML = `[${lat.toFixed(3)}, ${lng.toFixed(3)}]`;
+        }
+    }*/
+
+    if (id === 'df-1-') dfStatus[0] = true;
+    else dfStatus[1] = true;
+}
+
+const resetDataDisplay = (id) => {
+    let dataField = document.getElementById(id + 'data');
+    dataField.classList.add('hidden');
+
+    dataField = document.getElementById(id + 'default');
+    dataField.classList.remove('hidden');
+
+    if (id === 'df-1-') dfStatus[0] = false;
+    else dfStatus[1] = false;
+}
+
 // MAIN //
 
 const LOC_JSON_PATH = './Stations.geojson';
@@ -75,6 +123,7 @@ const CSV_PATH = './full_dataset.csv';
 const map = genMap();
 let data;
 let filteredData;
+let dfStatus = [false, false];
 let selectedYear = 2023;
 
 (async () => {
@@ -84,6 +133,21 @@ let selectedYear = 2023;
     });
     layer.addTo(map);
 
+    // Add on-click event listener for map
+    map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        editDataDisplay(e, false);
+    });
+
+    // Add on-click event listener for del icon
+    const titleWrappers = document.getElementsByClassName('title-wrapper');
+    for (let i = 0; i < titleWrappers.length; i++) {
+        const children = [...titleWrappers[i].children]
+        const icons = children.filter(child => child.tagName.toLowerCase() === 'i');
+        icons[0].addEventListener('click', () => resetDataDisplay(`df-${i + 1}-`));
+    }
+
+    // Map markers
     const response = await fetch(LOC_JSON_PATH);
     const stations = await response.json();
     
@@ -96,6 +160,13 @@ let selectedYear = 2023;
         });
         marker.bindTooltip(properties.name).openTooltip();
         marker.addTo(map);
+        
+        // Add on-click event listener for each marker
+        marker.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+            console.log(e);
+            editDataDisplay(e, true);
+        });
     }
 
     // Fetch data from csv and optimize it
@@ -115,37 +186,3 @@ let selectedYear = 2023;
         selector.addEventListener('click', () => swapData(y + i));
     }
 })();
-
-// D3 map
-/*const svg = d3.select(map.getPanes().overlayPane).append("svg");
-const g = svg.append("g").attr("class", "leaflet-zoom-hide");
-
-map.on("viewreset move", update);
-
-// Event listener for map click
-map.on("click", function (event) {
-    const [lat, lon] = [event.latlng.lat, event.latlng.lng];
-    console.log("Clicked at Lat: " + lat + ", Lon: " + lon);
-    // Create a popup and set its content
-    const popup = L.popup()
-        .setLatLng(event.latlng)
-        .setContent(`Clicked at Lat: ${lat.toFixed(6)}, Lon: ${lon.toFixed(6)}`)
-        .openOn(map);
-
-    // You can do further processing with the lat and lon values as needed
-});
-
-update();
-
-function update() {
-    const bounds = map.getBounds();
-    const topLeft = map.latLngToLayerPoint(bounds.getNorthWest());
-    const bottomRight = map.latLngToLayerPoint(bounds.getSouthEast());
-
-    svg.attr("width", bottomRight.x - topLeft.x)
-        .attr("height", bottomRight.y - topLeft.y)
-        .style("left", topLeft.x + "px")
-        .style("top", topLeft.y + "px");
-
-    g.attr("transform", "translate(" + -topLeft.x + "," + -topLeft.y + ")");
-}*/
